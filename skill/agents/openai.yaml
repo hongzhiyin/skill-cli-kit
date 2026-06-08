@@ -1,0 +1,6 @@
+interface:
+  display_name: "Skill CLI Kit"
+  short_description: "Scaffold and audit portable skill-backed CLIs"
+  default_prompt: "Use $skill-cli-kit to turn a reusable agent behavior into a portable skill plus CLI project."
+policy:
+  allow_implicit_invocation: true
