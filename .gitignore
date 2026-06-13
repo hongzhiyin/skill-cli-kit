@@ -2,5 +2,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+dist/
 docs/_generated/skillcli/*
 !docs/_generated/skillcli/.gitkeep

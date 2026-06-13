@@ -5,7 +5,7 @@
 ## Current Progress
 
 **Phase**: Phase 1 - reusable skill + CLI scaffold
-**Current Step**: Step 4a done; ready for third real-project validation
+**Current Step**: Step 4b done; ready for public release smoke and third real-project validation
 
 ### Step Status
 
@@ -17,6 +17,7 @@
 | 3 | Add update lifecycle for source-to-installed skill sync | Done |
 | 4 | Add review-style audit for existing CLI skill projects | Done |
 | 4a | Promote `skill-cli-kit` to a canonical `~/Project` source checkout | Done |
+| 4b | Make `skill-cli-kit` its own native-install reference project | Done |
 | 5 | Use on a third real skill and refine checks | Pending |
 
 ---
@@ -117,6 +118,25 @@ teaches other CLI-backed skills.
 2. `skillcli doctor --json` reports the canonical source root.
 3. `/Users/chihoyo/Project/skill-cli-kit` has its own git repository.
 4. `docdev audit /Users/chihoyo/Project/skill-cli-kit` and `skillcli audit /Users/chihoyo/Project/skill-cli-kit --json` pass without errors.
+
+## Step 4b - Native-install reference shape
+
+**Goal**: Make `skill-cli-kit` itself demonstrate the native release install
+shape it should later teach other skill-backed CLI projects.
+
+**Tasks**:
+- [x] Add release packaging and remote installer scripts.
+- [x] Add `skillcli native-update` and `skillcli uninstall`.
+- [x] Document native install vs source checkout install in SPEC, ARCHITECTURE,
+  README, skill, and DECISIONS.
+- [x] Create a docs-driven change packet for the native install requirement.
+
+**Acceptance**:
+1. `scripts/package_release.sh` produces artifact, checksum, manifest, and
+   installer assets.
+2. `scripts/install_remote.sh` can install from a local `file://` release asset
+   directory into a temporary native layout.
+3. Tests, `docdev audit`, and `skillcli audit` pass.
 
 ## Step 5 - Validate on a third real skill
 

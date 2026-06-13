@@ -268,3 +268,53 @@ look like a nested scratch project rather than a durable CLI project.
 - SPEC §2 K, §4, invariant #10
 - ARCHITECTURE §2.1
 - ROADMAP Step 4a
+
+---
+
+## D-008 - Make `skill-cli-kit` its own native-install reference
+
+**Date**: 2026-06-13
+
+**Context**:
+The user wants `skill-cli-kit` to be more than a local helper: it should be the
+reference implementation for turning reusable skills into native-installable
+CLI projects. Since `skill-cli-kit` itself was born by solidifying a skill into
+a CLI, its own project structure should demonstrate the install and release
+shape it will later recommend to generated projects.
+
+**Options**:
+- A. Keep only source-checkout wrappers - already healthy locally, but it leaves
+  the reference project one step behind the native-install shape proven by
+  `docs-driven-dev`.
+- B. Replace `skillcli update <project>` with native self-update - closer to
+  `docdev`, but breaks an existing command whose purpose is updating arbitrary
+  skill-backed source checkouts.
+- C. Add a native release layer beside the source-checkout lifecycle:
+  `scripts/package_release.sh`, remote installers, `~/.local/bin/skillcli`,
+  `skillcli native-update`, and confirmed uninstall.
+
+**Chosen**: C
+
+**Rationale**:
+- The source checkout remains the editable implementation and still supports
+  scaffold/audit/update work for other projects.
+- Native install gives future users and agents a no-clone path to `skillcli`.
+- Keeping `native-update` separate preserves the existing `skillcli update
+  <project>` contract.
+- The project can now serve as a concrete reference for later generated native
+  install scaffolds.
+
+**Risks**:
+- There is now one more lifecycle to document and test. Mitigation: keep native
+  release scripts small, checksum-verified, and covered by local file:// smoke.
+- Generated project templates do not yet fully emit this native release layer.
+  Mitigation: record this as follow-up after the self-hosting reference is
+  proven by a public release.
+
+**Related code / docs**:
+- SPEC §2 L, §3.3, invariant #11
+- ROADMAP Step 4b
+- `scripts/package_release.sh`
+- `scripts/install_remote.sh`
+- `scripts/install_remote.ps1`
+- `src/skill_cli_kit/cli.py`

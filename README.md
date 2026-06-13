@@ -5,6 +5,25 @@ projects.
 
 ## Quick start
 
+Native install from GitHub Releases:
+
+```bash
+curl -fsSL https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.sh | sh
+```
+
+If `~/.local/bin` is not on `PATH`, run `~/.local/bin/skillcli` directly or add
+that directory yourself.
+
+Native installs use:
+
+```text
+~/.local/share/skillcli/releases/<version>/
+~/.local/share/skillcli/current
+~/.local/bin/skillcli
+```
+
+Source checkout development:
+
 ```bash
 ./scripts/install_cli.sh
 ./.venv/bin/skillcli doctor
@@ -31,6 +50,18 @@ For this project:
 The update lifecycle installs the local wrapper, runs tests, runs
 `check_install`, syncs the skill, then runs `check_install` again.
 
+Build release assets:
+
+```bash
+./scripts/package_release.sh
+```
+
+Local release smoke:
+
+```bash
+SKILLCLI_RELEASE_BASE_URL="file:///path/to/release-assets" ./scripts/install_remote.sh
+```
+
 ## Reviewing Existing CLI Skills
 
 Use `audit` on any existing source checkout under `~/Project`:
@@ -50,6 +81,7 @@ This project captures the pattern proven by `bvr` and `docdev`:
 - the skill explains when and why to use the behavior;
 - the CLI performs deterministic work and emits checkable output;
 - scripts install local wrappers without package-index dependence;
+- native installers can install a released CLI without cloning the source repo;
 - sync writes installed skill-local `bin/<cli>` wrappers so agents can find the
   command from unrelated project directories.
 

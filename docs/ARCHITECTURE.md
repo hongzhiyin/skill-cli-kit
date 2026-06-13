@@ -26,7 +26,7 @@ Generated project
 | Skill source | `skill/SKILL.md` | Agent workflow for CLI-ifying reusable behavior | local install paths |
 | Installed wrapper | `<skill-target>/bin/skillcli` | Cross-project entrypoint back to this source checkout | shell PATH |
 | References | `skill/references/` | Optional pattern notes loaded only when improving the toolkit | CLI execution |
-| Scripts | `scripts/` | Source-checkout install, sync, and check commands | package index |
+| Scripts | `scripts/` | Source-checkout install/sync/check/update plus native release packaging/install | package index |
 | Tests | `tests/` | Scaffold and audit behavior checks | external services |
 | Docs | `docs/` | Source-of-truth project intent | generated audit output |
 
@@ -89,6 +89,27 @@ skillcli update <project>
   -> emit JSON summary when --json is passed
 ```
 
+### 3.5 Native Release Install
+
+```text
+scripts/package_release.sh
+  -> dist/releases/skillcli-<version>.tar.gz
+  -> dist/releases/skillcli-<version>.tar.gz.sha256
+  -> dist/releases/manifest.json
+  -> dist/releases/install_remote.sh / install_remote.ps1
+
+scripts/install_remote.sh
+  -> download manifest and artifact from GitHub Release or file:// base
+  -> verify SHA256
+  -> install release under ~/.local/share/skillcli/releases/<version>
+  -> update ~/.local/share/skillcli/current
+  -> write ~/.local/bin/skillcli launcher
+  -> run skillcli doctor and optionally sync skill targets
+
+skillcli native-update
+  -> delegate to scripts/install_remote.sh from the current release/source root
+```
+
 ## 4. Data Model
 
 ### 4.1 Finding
@@ -124,10 +145,14 @@ class ProjectMeta:
 | `SKILLCLI_VENV_DIR` | `.venv` | Local wrapper directory used by install script | no |
 | `CODEX_HOME` | `~/.codex` | Codex skill target root | no |
 | `PYTHONPATH` | project `src` prepended during tests | Lets source-checkout tests import the package | no |
+| `SKILLCLI_INSTALL_ROOT` | `~/.local/share/skillcli` | Native release install root | no |
+| `SKILLCLI_BIN_DIR` | `~/.local/bin` | Native launcher directory | no |
+| `SKILLCLI_RELEASE_BASE_URL` | GitHub latest release URL | Override release asset base for testing/private installs | no |
 
 ## 6. Process Model
 
-- Entry: `skillcli`, source `.venv/bin/skillcli`, or installed skill-local `bin/skillcli`.
+- Entry: native `skillcli` launcher, source `.venv/bin/skillcli`, or installed
+  skill-local `bin/skillcli`.
 - Shutdown: commands exit after a single operation.
 - Background work: none.
 - Network: none.
@@ -151,5 +176,7 @@ Current implementation borrows from:
 - Moving the source checkout requires rerunning sync to refresh installed wrappers.
 - `skillcli update --pull` uses `git pull --ff-only`; it does not resolve merge
   conflicts or choose update branches.
+- `skillcli native-update` is intentionally separate from `skillcli update
+  <project>` because the latter updates arbitrary source checkouts.
 - Review recommendations are heuristic; they indicate likely optimization work
   rather than a guarantee that the project is wrong.

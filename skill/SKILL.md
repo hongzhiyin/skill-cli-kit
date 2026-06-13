@@ -27,19 +27,28 @@ fallback selection, and interpretation.
 Resolve helper commands in this order:
 
 1. Run `skillcli <command>` if it is on `PATH`.
-2. If this installed skill path is visible, run `bin/skillcli <command>`.
-3. If `SKILLCLI_PROJECT_DIR` points to the source checkout, run:
+2. On Unix-like systems, if the native release launcher exists but `skillcli` is
+   not on `PATH`, run `~/.local/bin/skillcli <command>`.
+3. If this installed skill path is visible, run `bin/skillcli <command>`.
+4. If `SKILLCLI_PROJECT_DIR` points to the source checkout, run:
 
 ```bash
 SKILLCLI_PROJECT_DIR="$SKILLCLI_PROJECT_DIR" PYTHONPATH="$SKILLCLI_PROJECT_DIR/src" \
   python3 -m skill_cli_kit.cli <command>
 ```
 
-If none of those work, ask the user to run install/sync from the source checkout.
+If none of those work, ask the user to run the native installer or install/sync
+from the source checkout.
 
 ```bash
 ./scripts/install_cli.sh
 ./scripts/sync_skill.sh --targets codex,agents --force
+```
+
+For native release installs:
+
+```bash
+curl -fsSL https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.sh | sh
 ```
 
 ## Commands
@@ -49,7 +58,9 @@ skillcli init /path/to/project --name my-skill --cli mytool
 skillcli audit /path/to/project --write-report
 skillcli status /path/to/project --json
 skillcli update /path/to/project --force --json
+skillcli native-update
 skillcli sync-skill --targets codex,cursor,agents,claude --force
+skillcli uninstall --dry-run
 skillcli doctor --json
 ```
 
