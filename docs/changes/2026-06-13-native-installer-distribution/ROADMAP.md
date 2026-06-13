@@ -4,8 +4,8 @@
 
 ## 0. 当前状态
 
-**阶段 / Phase**: 验证与发布准备
-**当前 Step / Current Step**: Step 5 - 验证与收尾
+**阶段 / Phase**: 完成
+**当前 Step / Current Step**: Step 5 complete - v0.1.0 public native release published
 **ARCHITECTURE 省略理由 / Architecture Omission Reason**: 不省略；本需求新增 release packaging、native install、update、uninstall 数据流，见 `ARCHITECTURE.md`。
 
 ## 1. Gates
@@ -45,7 +45,7 @@
 | 2 | 调研既有实现 | 完成 |
 | 3 | 形成并确认方案 | 完成 |
 | 4 | 实施代码与测试 | 完成 |
-| 5 | 验证与收尾 | 进行中 |
+| 5 | 验证与收尾 | 完成 |
 
 ---
 
@@ -133,7 +133,9 @@
 - [x] 验证 `native-update` 和 `uninstall --dry-run`
 - [x] 运行 `skillcli audit`
 - [x] 运行 `docdev audit`
-- [ ] commit 并按用户要求创建公开 GitHub 仓库
+- [x] commit 并按用户要求创建公开 GitHub 仓库
+- [x] 创建 `v0.1.0` GitHub Release 并上传 native installer assets
+- [x] 使用 GitHub Releases installer 做公网安装 smoke
 
 **Acceptance**:
 1. SPEC §8 的验收项全部有记录。
@@ -148,11 +150,12 @@
 | SPEC-4 | native install 后执行 `skillcli --version` / `doctor --json` / `native-update` / `uninstall --dry-run` | 通过 | version `0.1.0`; source root 指向 native release root |
 | SPEC-5 | `PYTHONPATH=src python3 -m skill_cli_kit.cli audit /Users/chihoyo/Project/skill-cli-kit --json` | 通过 | 0 error / 0 warn |
 | SPEC-6 | `/Users/chihoyo/.local/bin/docdev audit /Users/chihoyo/Project/skill-cli-kit` | 通过 | No findings |
+| SPEC-7 | `curl -fsSL -o /private/tmp/skillcli-public-install.sh https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.sh`; then install to `/private/tmp/skillcli-public-smoke-*` | 通过 | GitHub Release installer installed `skillcli 0.1.0`; doctor source root 指向 public smoke release root |
 
 ## 5. 风险与后续
 
 | ID | 风险 / 后续 | 影响 | 处理 |
 |---|---|---|---|
 | F-1 | `skillcli init` 尚未自动生成完整 native release layer | 后续 CLI 化其他 skill 时仍需先参考本仓库手动迁移 | 后续处理 |
-| F-2 | GitHub release install 需要真实 release assets 才能完整远程验证 | 本地 `file://` smoke 不能覆盖公网下载链路 | 发布后补远程 smoke |
+| F-2 | GitHub release install 后续仍需每个版本做公网 smoke | 未来 release 可能有 asset/manifest 上传遗漏 | 纳入发布检查 |
 | F-3 | Windows installer 当前以脚本审阅为主，尚未在 Windows 机器实测 | Windows 用户可能遇到 PowerShell/路径差异 | 后续处理 |

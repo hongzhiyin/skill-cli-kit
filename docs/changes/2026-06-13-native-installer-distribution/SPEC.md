@@ -6,7 +6,7 @@
 
 | 字段 | 内容 |
 |---|---|
-| 状态 | 实施完成，待发布验证 |
+| 状态 | 完成，v0.1.0 public release 已发布 |
 | 需求来源 | 2026-06-13 用户要求 `skill-cli-kit` 先把自己做成 native-install 参考实现 |
 | 工作包目录 | `docs/changes/2026-06-13-native-installer-distribution/` |
 | 最后更新 | 2026-06-13 |
@@ -81,6 +81,7 @@
 3. `python3 -m unittest discover -s tests` 通过。
 4. `skillcli audit /Users/chihoyo/Project/skill-cli-kit --json` 为 0 error / 0 warn。
 5. `/Users/chihoyo/.local/bin/docdev audit /Users/chihoyo/Project/skill-cli-kit` 无 findings。
+6. GitHub Releases 的 `install_remote.sh` 可以从公网安装 `skillcli 0.1.0`。
 
 ## 9. 开放问题
 

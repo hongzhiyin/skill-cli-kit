@@ -5,7 +5,7 @@
 ## Current Progress
 
 **Phase**: Phase 1 - reusable skill + CLI scaffold
-**Current Step**: Step 4b done; ready for public release smoke and third real-project validation
+**Current Step**: Step 4b done; v0.1.0 public native release published; ready for third real-project validation
 
 ### Step Status
 
@@ -136,7 +136,9 @@ shape it should later teach other skill-backed CLI projects.
    installer assets.
 2. `scripts/install_remote.sh` can install from a local `file://` release asset
    directory into a temporary native layout.
-3. Tests, `docdev audit`, and `skillcli audit` pass.
+3. GitHub Releases installer can install `skillcli 0.1.0` into a temporary
+   native layout.
+4. Tests, `docdev audit`, and `skillcli audit` pass.
 
 ## Step 5 - Validate on a third real skill
 
