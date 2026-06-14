@@ -31,6 +31,17 @@ Source checkout development:
 ./.venv/bin/skillcli audit /tmp/my-skill
 ```
 
+## Updating skillcli
+
+For native installs, update `skillcli` itself from the release channel:
+
+```bash
+skillcli update
+```
+
+Use `--no-sync-skill` only when you want to refresh the CLI release without
+writing Codex / Agents skill copies.
+
 ## Updating A Tool
 
 Each skill-backed CLI should have one editable source checkout, usually under

@@ -96,6 +96,36 @@ class SkillCliKitTest(unittest.TestCase):
             self.assertEqual([step["name"] for step in payload["steps"]], ["install", "tests", "precheck", "sync", "postcheck"])
             self.assertTrue((codex_home / "skills" / "example-skill" / "bin" / "exskill").exists())
 
+    def test_update_without_project_updates_skillcli_release(self) -> None:
+        calls: list[object] = []
+        original = cli.cmd_release_update
+
+        def fake_release_update(args: object) -> int:
+            calls.append(args)
+            return 23
+
+        cli.cmd_release_update = fake_release_update
+        try:
+            code = cli.main(["update", "--version", "0.1.1", "--no-sync-skill"])
+        finally:
+            cli.cmd_release_update = original
+
+        self.assertEqual(code, 23)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(getattr(calls[0], "project"), None)
+        self.assertEqual(getattr(calls[0], "version"), "0.1.1")
+        self.assertEqual(getattr(calls[0], "sync_skill"), False)
+
+    def test_source_update_flags_require_project(self) -> None:
+        with self.assertRaises(SystemExit) as caught:
+            cli.main(["update", "--force"])
+        self.assertIn("require an explicit project path", str(caught.exception))
+
+    def test_release_update_flags_reject_project(self) -> None:
+        with self.assertRaises(SystemExit) as caught:
+            cli.main(["update", ".", "--version", "0.1.1"])
+        self.assertIn("release update options require no project path", str(caught.exception))
+
     def test_audit_reports_missing_core_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "broken"

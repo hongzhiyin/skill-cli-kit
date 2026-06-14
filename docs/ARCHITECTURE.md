@@ -76,9 +76,14 @@ skillcli sync-skill
   -> link Claude target to shared agents target
 ```
 
-### 3.4 Update Project
+### 3.4 Update
 
 ```text
+skillcli update
+  -> delegate to scripts/install_remote.sh from the current release/source root
+  -> download and install release assets
+  -> optionally sync skill targets
+
 skillcli update <project>
   -> optionally git pull --ff-only
   -> run scripts/install_cli.sh
@@ -105,9 +110,6 @@ scripts/install_remote.sh
   -> update ~/.local/share/skillcli/current
   -> write ~/.local/bin/skillcli launcher
   -> run skillcli doctor and optionally sync skill targets
-
-skillcli native-update
-  -> delegate to scripts/install_remote.sh from the current release/source root
 ```
 
 ## 4. Data Model
@@ -176,7 +178,8 @@ Current implementation borrows from:
 - Moving the source checkout requires rerunning sync to refresh installed wrappers.
 - `skillcli update --pull` uses `git pull --ff-only`; it does not resolve merge
   conflicts or choose update branches.
-- `skillcli native-update` is intentionally separate from `skillcli update
-  <project>` because the latter updates arbitrary source checkouts.
+- `skillcli update` without a project updates the installed release; callers
+  must pass `skillcli update .` or `skillcli update <project>` for source
+  checkout maintenance.
 - Review recommendations are heuristic; they indicate likely optimization work
   rather than a guarantee that the project is wrong.

@@ -318,3 +318,47 @@ shape it will later recommend to generated projects.
 - `scripts/install_remote.sh`
 - `scripts/install_remote.ps1`
 - `src/skill_cli_kit/cli.py`
+
+---
+
+## D-009 - Make `update` the self-release update command
+
+**Date**: 2026-06-14
+
+**Context**:
+After v0.1.0 introduced `skillcli native-update`, the user pointed out that the
+command does not need `native` in its public name. The implementation detail is
+native release installation, but the user intent is simply to update
+`skillcli`.
+
+**Options**:
+- A. Keep `native-update` as the documented command - smallest change, but it
+  exposes an implementation detail.
+- B. Replace project update entirely with self-update - simple command surface,
+  but it breaks `skillcli update <project>` for source checkout maintenance.
+- C. Make `skillcli update` update the installed release when no project is
+  provided, keep `skillcli update <project>` for source checkout updates, and
+  retain `native-update` only as a hidden compatibility alias.
+
+**Chosen**: C
+
+**Rationale**:
+- `skillcli update` is the natural self-update command for users and agents.
+- Explicit project paths keep the source checkout lifecycle unambiguous:
+  `skillcli update .` or `skillcli update ~/Project/<tool>`.
+- Hiding `native-update` reduces new-user command surface while preserving a
+  transition path for v0.1.0 users.
+
+**Risks**:
+- Users relying on old no-argument `skillcli update` as current-directory
+  project update must now pass `.` explicitly. Mitigation: source-only flags
+  without a project emit an error that names the required project path.
+- Release-update options and project-update options share one subcommand.
+  Mitigation: mixed release options plus project path are rejected.
+
+**Related code / docs**:
+- SPEC §2 I, §3.2, invariant #12
+- ROADMAP Step 4b
+- `docs/changes/2026-06-14-update-self-release-by-default/`
+- `src/skill_cli_kit/cli.py`
+- `tests/test_cli.py`

@@ -1146,7 +1146,43 @@ def append_stage(
     return int(step["exit_code"]) == 0
 
 
-def cmd_update(args: argparse.Namespace) -> int:
+def source_update_flags(args: argparse.Namespace) -> list[str]:
+    flags: list[str] = []
+    for name, flag in (
+        ("pull", "--pull"),
+        ("allow_dirty", "--allow-dirty"),
+        ("force", "--force"),
+        ("skip_install", "--skip-install"),
+        ("skip_tests", "--skip-tests"),
+        ("skip_precheck", "--skip-precheck"),
+        ("skip_sync", "--skip-sync"),
+        ("skip_postcheck", "--skip-postcheck"),
+        ("dry_run", "--dry-run"),
+        ("json", "--json"),
+    ):
+        if getattr(args, name, False):
+            flags.append(flag)
+    if getattr(args, "sync_arg", None):
+        flags.append("--sync-arg")
+    return flags
+
+
+def release_update_flags(args: argparse.Namespace) -> list[str]:
+    flags: list[str] = []
+    for name, flag in (
+        ("version", "--version"),
+        ("release_base_url", "--release-base-url"),
+        ("install_root", "--install-root"),
+        ("bin_dir", "--bin-dir"),
+    ):
+        if getattr(args, name, None):
+            flags.append(flag)
+    if getattr(args, "sync_skill", None) is not None:
+        flags.append("--sync-skill" if args.sync_skill else "--no-sync-skill")
+    return flags
+
+
+def cmd_update_project(args: argparse.Namespace) -> int:
     project = Path(args.project).expanduser().resolve()
     steps: list[dict[str, object]] = []
     skipped: list[str] = []
@@ -1310,7 +1346,7 @@ def resolve_native_bin_dir(raw: str | None = None) -> Path:
     return Path.home() / ".local" / "bin"
 
 
-def cmd_native_update(args: argparse.Namespace) -> int:
+def cmd_release_update(args: argparse.Namespace) -> int:
     source_root = find_source_root()
     installer = source_root / "scripts" / "install_remote.sh"
     if not installer.exists():
@@ -1325,11 +1361,32 @@ def cmd_native_update(args: argparse.Namespace) -> int:
         command.extend(["--install-root", args.install_root])
     if args.bin_dir:
         command.extend(["--bin-dir", args.bin_dir])
-    command.append("--sync-skill" if args.sync_skill else "--no-sync-skill")
+    sync_skill = True if args.sync_skill is None else bool(args.sync_skill)
+    command.append("--sync-skill" if sync_skill else "--no-sync-skill")
 
     env = os.environ.copy()
     env.setdefault("SKILLCLI_INSTALL_LOG_PREFIX", "[skillcli update]")
     return subprocess.run(command, check=False, env=env).returncode
+
+
+def cmd_update(args: argparse.Namespace) -> int:
+    if args.project is None:
+        invalid = source_update_flags(args)
+        if invalid:
+            raise SystemExit(
+                "skillcli update without a project updates the installed skillcli release; "
+                f"{', '.join(invalid)} require an explicit project path, for example: "
+                "skillcli update /path/to/project --force"
+            )
+        return cmd_release_update(args)
+
+    invalid = release_update_flags(args)
+    if invalid:
+        raise SystemExit(
+            "release update options require no project path; use `skillcli update "
+            f"{' '.join(invalid)}` or update a source project without those options"
+        )
+    return cmd_update_project(args)
 
 
 def launcher_candidates(bin_dir: Path) -> list[Path]:
@@ -1573,7 +1630,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=CLI_NAME, description="Skill + CLI project scaffolding and audit toolkit.")
     parser.add_argument("-v", "--version", action="version", version=f"{CLI_NAME} {__version__}")
-    sub = parser.add_subparsers(dest="command", required=True)
+    visible_commands = "{init,audit,status,update,uninstall,sync-skill,doctor}"
+    sub = parser.add_subparsers(dest="command", required=True, metavar=visible_commands)
 
     init = sub.add_parser("init", help="Create a portable skill + CLI source project.")
     init.add_argument("project")
@@ -1606,8 +1664,16 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--json", action="store_true")
     status.set_defaults(func=cmd_status)
 
-    update = sub.add_parser("update", help="Run the standard source-update verification and skill sync lifecycle.")
-    update.add_argument("project", nargs="?", default=".")
+    def add_release_update_args(command: argparse.ArgumentParser) -> None:
+        command.add_argument("--version", default=None, help="Install a specific release version when updating skillcli itself.")
+        command.add_argument("--release-base-url", default=None, help="Manifest/artifact base URL when updating skillcli itself.")
+        command.add_argument("--install-root", default=None, help="Override SKILLCLI_INSTALL_ROOT when updating skillcli itself.")
+        command.add_argument("--bin-dir", default=None, help="Override SKILLCLI_BIN_DIR when updating skillcli itself.")
+        command.add_argument("--sync-skill", dest="sync_skill", action="store_true", default=None, help="Refresh installed skill targets after updating skillcli itself. Default.")
+        command.add_argument("--no-sync-skill", dest="sync_skill", action="store_false", help="Update skillcli itself only; skip refreshing skill targets.")
+
+    update = sub.add_parser("update", help="Update skillcli itself, or update a source project when PROJECT is provided.")
+    update.add_argument("project", nargs="?", default=None, help="Optional source checkout to update.")
     update.add_argument("--pull", action="store_true", help="Run git pull --ff-only before local verification.")
     update.add_argument("--allow-dirty", action="store_true", help="Allow --pull with a dirty worktree.")
     update.add_argument("--force", action="store_true", help="Pass --force to scripts/sync_skill.sh.")
@@ -1619,16 +1685,13 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--skip-postcheck", action="store_true")
     update.add_argument("--dry-run", action="store_true")
     update.add_argument("--json", action="store_true")
+    add_release_update_args(update)
     update.set_defaults(func=cmd_update)
 
-    native_update = sub.add_parser("native-update", help="Update a native release install.")
-    native_update.add_argument("--version", default=None, help="Install a specific release version.")
-    native_update.add_argument("--release-base-url", default=None, help="Manifest/artifact base URL.")
-    native_update.add_argument("--install-root", default=None, help="Override SKILLCLI_INSTALL_ROOT.")
-    native_update.add_argument("--bin-dir", default=None, help="Override SKILLCLI_BIN_DIR.")
-    native_update.add_argument("--sync-skill", dest="sync_skill", action="store_true", default=True, help="Refresh installed skill targets after update. Default.")
-    native_update.add_argument("--no-sync-skill", dest="sync_skill", action="store_false", help="Update the native release only; skip refreshing skill targets.")
-    native_update.set_defaults(func=cmd_native_update)
+    native_update = sub.add_parser("native-update", help=argparse.SUPPRESS)
+    add_release_update_args(native_update)
+    native_update.set_defaults(func=cmd_release_update)
+    sub._choices_actions = [item for item in sub._choices_actions if item.dest != "native-update"]
 
     uninstall = sub.add_parser("uninstall", help="Remove a native release install and owned skill targets.")
     uninstall.add_argument("--install-root", default=None, help="Override SKILLCLI_INSTALL_ROOT.")

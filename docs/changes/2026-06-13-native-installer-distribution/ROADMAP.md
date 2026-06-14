@@ -31,7 +31,7 @@
 
 | ID | 主题 | 发现 | 证据 / 文件 | 结论 |
 |---|---|---|---|---|
-| R-1 | 现有 CLI 入口 | `skillcli update <project>` 已用于源码 checkout 生命周期 | `src/skill_cli_kit/cli.py` | native release update 需要独立命令，避免语义冲突 |
+| R-1 | 现有 CLI 入口 | `skillcli update <project>` 已用于源码 checkout 生命周期 | `src/skill_cli_kit/cli.py` | release update 使用无 project 的 `skillcli update`，避免和显式项目路径冲突 |
 | R-2 | 现有安装形态 | `install_cli.sh` 和 `sync_skill.sh` 面向本机源码仓库 | `scripts/install_cli.sh`, `scripts/sync_skill.sh` | release install 需要把源码、skill、脚本打进 artifact |
 | R-3 | docs-driven-dev 参考 | native installer 使用 release asset、manifest、checksum 和 current symlink | `/Users/chihoyo/Project/docs-driven-dev/scripts/install_remote.sh` | 采用相同大方向，但保留 `skillcli` 自身命名与 env |
 | R-4 | 自举定位 | 用户希望 `skill-cli-kit` 自己的项目结构成为后续 CLI 化其他 skill 的参考 | 本工作包 SPEC §1 | 本次优先改造本仓库自身结构 |
@@ -98,7 +98,7 @@
 **Tasks**:
 - [x] 记录 D-001
 - [x] 在主 docs 中记录 D-008
-- [x] 明确 `native-update` 与 `update <project>` 的边界
+- [x] 明确 release self-update 与 `update <project>` 的边界
 
 **Acceptance**:
 1. 主文档和本工作包都说明为什么选择 GitHub Releases/native installer。
@@ -113,7 +113,7 @@
 - [x] 新增 `scripts/package_release.sh`
 - [x] 新增 `scripts/install_remote.sh`
 - [x] 新增 `scripts/install_remote.ps1`
-- [x] 新增 `skillcli native-update`
+- [x] 新增 `skillcli update` release/self-update 模式
 - [x] 新增 `skillcli uninstall`
 - [x] 更新 README、skill 说明和四件套文档
 
@@ -130,7 +130,7 @@
 - [x] 运行单元测试
 - [x] 打包本地 release assets
 - [x] 使用 `file://` release assets 做 native install smoke
-- [x] 验证 `native-update` 和 `uninstall --dry-run`
+- [x] 验证 release/self-update 和 `uninstall --dry-run`
 - [x] 运行 `skillcli audit`
 - [x] 运行 `docdev audit`
 - [x] commit 并按用户要求创建公开 GitHub 仓库
@@ -147,7 +147,7 @@
 | SPEC-1 | `python3 -m unittest discover -s tests` | 通过 | 6 tests OK |
 | SPEC-2 | `scripts/package_release.sh --out /private/tmp/skillcli-release-assets-0.1.0` | 通过 | 产出 tarball、sha256、manifest、Unix installer、PowerShell installer |
 | SPEC-3 | `SKILLCLI_RELEASE_BASE_URL=file:///private/tmp/skillcli-release-assets-0.1.0 scripts/install_remote.sh --no-sync-skill` | 通过 | installed version 0.1.0 under `/private/tmp/skillcli-smoke-root-0.1.0/releases/0.1.0` |
-| SPEC-4 | native install 后执行 `skillcli --version` / `doctor --json` / `native-update` / `uninstall --dry-run` | 通过 | version `0.1.0`; source root 指向 native release root |
+| SPEC-4 | native install 后执行 `skillcli --version` / `doctor --json` / `update` / `uninstall --dry-run` | 通过 | version `0.1.0`; source root 指向 native release root；v0.1.1 起主入口为 `skillcli update` |
 | SPEC-5 | `PYTHONPATH=src python3 -m skill_cli_kit.cli audit /Users/chihoyo/Project/skill-cli-kit --json` | 通过 | 0 error / 0 warn |
 | SPEC-6 | `/Users/chihoyo/.local/bin/docdev audit /Users/chihoyo/Project/skill-cli-kit` | 通过 | No findings |
 | SPEC-7 | `curl -fsSL -o /private/tmp/skillcli-public-install.sh https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.sh`; then install to `/private/tmp/skillcli-public-smoke-*` | 通过 | GitHub Release installer installed `skillcli 0.1.0`; doctor source root 指向 public smoke release root |

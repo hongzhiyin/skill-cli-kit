@@ -57,8 +57,8 @@ curl -fsSL https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/
 skillcli init /path/to/project --name my-skill --cli mytool
 skillcli audit /path/to/project --write-report
 skillcli status /path/to/project --json
+skillcli update
 skillcli update /path/to/project --force --json
-skillcli native-update
 skillcli sync-skill --targets codex,cursor,agents,claude --force
 skillcli uninstall --dry-run
 skillcli doctor --json
@@ -114,6 +114,22 @@ skillcli update ~/Project/<tool> --pull --force
 
 `--pull` uses `git pull --ff-only` and refuses a dirty worktree unless
 `--allow-dirty` is passed.
+
+## Workflow B2 - Update skillcli Itself
+
+Use this when the installed `skillcli` release should be refreshed from GitHub
+Releases. This is different from updating a generated project's source
+checkout.
+
+```bash
+skillcli update
+```
+
+To skip refreshing installed skill copies:
+
+```bash
+skillcli update --no-sync-skill
+```
 
 ## Workflow C - Audit Existing Skill + CLI Projects
 

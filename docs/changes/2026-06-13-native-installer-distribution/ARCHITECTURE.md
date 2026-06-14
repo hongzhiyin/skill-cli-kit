@@ -7,7 +7,7 @@
 本需求在现有 source checkout lifecycle 之外增加 native release lifecycle。两者并行存在：
 
 - Source checkout lifecycle: 本地开发、`scripts/update_cli.sh`、`skillcli update <project>`、`sync-skill`。
-- Native release lifecycle: `scripts/package_release.sh`、GitHub Releases assets、`install_remote`、`skillcli native-update`、`skillcli uninstall`。
+- Native release lifecycle: `scripts/package_release.sh`、GitHub Releases assets、`install_remote`、`skillcli update`、`skillcli uninstall`。
 
 ## 2. Native Release Assets
 
@@ -60,7 +60,7 @@ flowchart TD
   E --> G["current symlink or pointer"]
   E --> H["bin/skillcli launcher"]
   H --> I["python -m skill_cli_kit.cli"]
-  I --> J["skillcli native-update"]
+  I --> J["skillcli update"]
   J --> E
   I --> K["skillcli uninstall"]
 ```
@@ -69,8 +69,8 @@ flowchart TD
 
 | Command | Lifecycle | Boundary |
 |---|---|---|
+| `skillcli update` | Native release | 重新运行 release installer 并切换 native `current` |
 | `skillcli update <project>` | Source checkout | 更新某个源码目录内的 CLI 和 skill wrapper |
-| `skillcli native-update` | Native release | 重新运行 release installer 并切换 native `current` |
 | `skillcli uninstall` | Native release | 删除 owned launcher、release root 和可选 installed skill wrapper |
 
 ## 6. Safety Rules

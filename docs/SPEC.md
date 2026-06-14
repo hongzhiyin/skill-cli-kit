@@ -20,7 +20,7 @@ contracts.
 | F | Audit strictness | Missing core files are errors; portability gaps are warnings | See D-002 |
 | G | Agent-readable output | Status, doctor, and audit commands support JSON | See D-004 |
 | H | Skill metadata | Generated skills declare required CLI bins and `cliHelp` | See D-004 |
-| I | Update lifecycle | Source update is followed by install, test, check, sync, and verify | See D-005 |
+| I | Update lifecycle | `skillcli update` updates the installed release by default; explicit project update is followed by install, test, check, sync, and verify | See D-005 and D-009 |
 | J | Existing project review | Audit reports categorize required gaps and optimization opportunities | See D-006 |
 | K | Source checkout location | `skill-cli-kit` itself should live as a top-level `~/Project/skill-cli-kit` source checkout | See D-007 |
 | L | Native release install | Released `skillcli` installs under `~/.local/share/skillcli` with a `~/.local/bin/skillcli` launcher | See D-008 |
@@ -42,8 +42,8 @@ contracts.
 | `skillcli init <project>` | Create a portable skill + CLI source project | Writes scaffold files under project |
 | `skillcli audit <project>` | Check skill/CLI portability structure and optimization opportunities | Optional `docs/_generated/skillcli/audit.json` |
 | `skillcli status <project> [--json]` | Show discovered metadata and finding counts | No |
-| `skillcli update <project>` | Run the standard post-source-update lifecycle | Runs project scripts and syncs installed skill |
-| `skillcli native-update` | Update a native release install | Downloads and installs release assets |
+| `skillcli update` | Update the installed `skillcli` release | Downloads and installs release assets |
+| `skillcli update <project>` | Run the standard post-source-update lifecycle for an explicit source checkout | Runs project scripts and syncs installed skill |
 | `skillcli uninstall` | Remove native release install and owned skill targets | Deletes only owned/generated paths after confirmation |
 | `skillcli sync-skill` | Sync this skill to agent skill homes and generate `bin/skillcli` | Writes skill target dirs |
 | `skillcli doctor [--json]` | Show source checkout and installed skill state | No |
@@ -103,6 +103,7 @@ metadata:
 | Audit report requested | Write under `docs/_generated/skillcli/` |
 | Agent needs current state | Prefer `status --json`, `doctor --json`, or `audit --json` |
 | Source has just been updated | Run `skillcli update <project> --force`, or the project's `scripts/update_cli.sh --force` |
+| `skillcli` itself should be updated | Run `skillcli update`; use `--no-sync-skill` only when agent homes should not be refreshed |
 | User needs `skillcli` on a machine without the source checkout | Use the native installer from GitHub Releases |
 | Native launcher exists but is not on `PATH` | Use `~/.local/bin/skillcli` directly |
 | Git pull is requested | Use `skillcli update <project> --pull`; refuse dirty worktrees unless `--allow-dirty` is passed |
@@ -137,6 +138,10 @@ optional git pull --ff-only
 
 The lifecycle must fail before sync if install, tests, or pre-sync checks fail,
 unless the caller explicitly skips that stage.
+
+`skillcli update` with no project path is reserved for the installed release
+self-update. To update the current working directory as a source project,
+callers must pass `skillcli update .`.
 
 ### 5.3 Review Finding
 
@@ -175,10 +180,12 @@ Constraints:
 5. **#5**: Generated audit reports live under `docs/_generated/skillcli/`.
 6. **#6**: Agent-facing state commands must have structured JSON output.
 7. **#7**: Generated skills declare their required CLI bin in metadata.
-8. **#8**: Installed skills are updated only from the source checkout after local verification.
+8. **#8**: Source checkout skill updates require an explicit project path and local verification.
 9. **#9**: Audit findings include enough category and recommendation context to guide optimization work.
 10. **#10**: `skill-cli-kit`'s canonical editable source checkout is
     `~/Project/skill-cli-kit`; installed wrappers may point there, but installed
     skill directories must not become source-of-truth.
 11. **#11**: Native release installers must verify artifact checksums before
     switching the `current` launcher target.
+12. **#12**: `skillcli update` without a project path updates the installed
+    `skillcli` release; project update requires an explicit path.
