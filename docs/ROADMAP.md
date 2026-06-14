@@ -5,7 +5,7 @@
 ## Current Progress
 
 **Phase**: Phase 1 - reusable skill + CLI scaffold
-**Current Step**: Step 4c in progress; make `skillcli update` the self-release update command
+**Current Step**: Step 4c done; v0.1.1 public release published and verified
 
 ### Step Status
 
@@ -18,7 +18,7 @@
 | 4 | Add review-style audit for existing CLI skill projects | Done |
 | 4a | Promote `skill-cli-kit` to a canonical `~/Project` source checkout | Done |
 | 4b | Make `skill-cli-kit` its own native-install reference project | Done |
-| 4c | Make `skillcli update` the self-release update command | In progress |
+| 4c | Make `skillcli update` the self-release update command | Done |
 | 5 | Use on a third real skill and refine checks | Pending |
 
 ---
@@ -151,7 +151,7 @@ shape it should later teach other skill-backed CLI projects.
 - [x] Change `update` dispatch so no project updates `skillcli` itself, while
   explicit project paths keep the source checkout lifecycle.
 - [x] Hide but temporarily retain `native-update` as a compatibility alias.
-- [ ] Release v0.1.1 and run GitHub Release installer smoke.
+- [x] Release v0.1.1 and run GitHub Release installer smoke.
 
 **Acceptance**:
 1. `skillcli update` updates the installed release.

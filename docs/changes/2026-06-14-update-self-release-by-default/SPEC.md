@@ -6,7 +6,7 @@
 
 | 字段 | 内容 |
 |---|---|
-| 状态 | 本地验证通过，待 v0.1.1 发布验证 |
+| 状态 | 完成，v0.1.1 public release 已发布并验证 |
 | 需求来源 | 2026-06-14 用户指出 `update` 不需要暴露 `native` 命名 |
 | 工作包目录 | `docs/changes/2026-06-14-update-self-release-by-default/` |
 | 最后更新 | 2026-06-14 |

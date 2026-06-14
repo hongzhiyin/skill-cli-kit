@@ -4,8 +4,8 @@
 
 ## 0. 当前状态
 
-**阶段 / Phase**: 发布准备
-**当前 Step / Current Step**: Step 5 - 发布与公网验证
+**阶段 / Phase**: 完成
+**当前 Step / Current Step**: Step 5 complete - v0.1.1 public release verified
 **ARCHITECTURE 省略理由 / Architecture Omission Reason**: 不省略；本需求改变 `update` 命令的 public dispatch 语义。
 
 ## 1. Gates
@@ -23,9 +23,9 @@
 ### Completion Gate
 
 - [x] 所有实施任务完成或有明确跳过理由
-- [ ] 验收标准逐条验证
-- [ ] 文档与最终实现一致
-- [ ] 剩余风险和后续工作已记录
+- [x] 验收标准逐条验证
+- [x] 文档与最终实现一致
+- [x] 剩余风险和后续工作已记录
 
 ## 2. 调研记录
 
@@ -44,7 +44,7 @@
 | 2 | 调研既有实现 | 完成 |
 | 3 | 形成方案 | 完成 |
 | 4 | 实施代码与测试 | 完成 |
-| 5 | 验证与收尾 | 进行中 |
+| 5 | 验证与收尾 | 完成 |
 
 ---
 
@@ -74,7 +74,7 @@
 | SPEC-3 | `PYTHONPATH=src python3 -m skill_cli_kit.cli update --release-base-url file:///private/tmp/skillcli-release-assets-0.1.1 --install-root /private/tmp/skillcli-update-smoke-root-0.1.1 --bin-dir /private/tmp/skillcli-update-smoke-bin-0.1.1 --no-sync-skill` | 通过 | installed `skillcli 0.1.1` into temp native layout |
 | SPEC-4 | `PYTHONPATH=src python3 -m skill_cli_kit.cli audit /Users/chihoyo/Project/skill-cli-kit --json` | 通过 | 0 error / 0 warn |
 | SPEC-5 | `/Users/chihoyo/.local/bin/docdev audit /Users/chihoyo/Project/skill-cli-kit` | 通过 | No findings |
-| SPEC-6 | GitHub Release installer smoke for v0.1.1 | 待验证 | 发布后执行 |
+| SPEC-6 | `curl -fsSL -o /private/tmp/skillcli-public-install-0.1.1.sh https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.sh`; then install to `/private/tmp/skillcli-public-smoke-*` | 通过 | installed `skillcli 0.1.1`; public help hides `native-update`; release URL `https://github.com/hongzhiyin/skill-cli-kit/releases/tag/v0.1.1` |
 
 ## 5. 风险与后续
 
