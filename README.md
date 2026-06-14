@@ -61,6 +61,16 @@ For this project:
 The update lifecycle installs the local wrapper, runs tests, runs
 `check_install`, syncs the skill, then runs `check_install` again.
 
+Generated skill-backed CLIs should also expose their own sync entrypoint:
+
+```bash
+mytool sync-skill --targets codex,agents --force
+```
+
+That command should only delegate to the project's `scripts/sync_skill.sh`; the
+script remains the single implementation of target resolution, copying, and
+installed `bin/<cli>` wrapper generation.
+
 Build release assets:
 
 ```bash
@@ -95,6 +105,8 @@ This project captures the pattern proven by `bvr` and `docdev`:
 - native installers can install a released CLI without cloning the source repo;
 - sync writes installed skill-local `bin/<cli>` wrappers so agents can find the
   command from unrelated project directories.
+- generated domain CLIs expose `<cli> sync-skill` as the discoverable sync
+  entrypoint while delegating to `scripts/sync_skill.sh`.
 
 ## Documentation map
 

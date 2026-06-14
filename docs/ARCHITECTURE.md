@@ -15,6 +15,7 @@ User / Agent
 Generated project
   -> skill/SKILL.md
   -> src/<package>/cli.py
+      -> `<cli> sync-skill` delegates to scripts/sync_skill.sh
   -> scripts/install_cli.sh / sync_skill.sh / check_install.sh / update_cli.sh
 ```
 
@@ -52,6 +53,7 @@ skillcli init <project>
   -> normalize skill/CLI/package/env names
   -> render scaffold templates
   -> create scripts, skill, source package, tests, and docs
+  -> render generated CLI status/doctor/sync-skill commands
   -> create docs/_generated/<cli>/.gitkeep
 ```
 
@@ -61,9 +63,21 @@ skillcli init <project>
 skillcli audit <project>
   -> read pyproject script entry
   -> read skill frontmatter, metadata, and CLI instructions
-  -> inspect scripts, tests, docs, references, wrappers, and update lifecycle
+  -> inspect scripts, tests, docs, references, wrappers, generated CLI sync-skill, and update lifecycle
   -> emit categorized findings and optional docs/_generated/skillcli/audit.json
 ```
+
+### 3.2.1 Generated Project Sync
+
+```text
+<cli> sync-skill --targets codex,agents --force
+  -> resolve source checkout
+  -> execute scripts/sync_skill.sh with the same --targets/--force/--dry-run flags
+  -> scripts/sync_skill.sh copies skill/ and writes installed bin/<cli> wrappers
+```
+
+The generated CLI command is intentionally a thin process wrapper. It does not
+resolve target directories, copy files, or generate wrappers itself.
 
 ### 3.3 Sync
 

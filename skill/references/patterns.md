@@ -25,4 +25,7 @@ Keep behavior in the skill when it is:
 - `doctor`: inspect local tool and sync state
 - `sync-skill`: copy skill content and generate installed wrappers
 
-Domain projects add their own commands beside this surface.
+Domain projects add their own commands beside this surface, but should keep a
+business CLI `sync-skill` command available. That command should forward
+`--targets`, `--force`, and `--dry-run` to `scripts/sync_skill.sh` instead of
+duplicating target resolution or copy logic.

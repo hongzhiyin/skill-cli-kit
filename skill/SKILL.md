@@ -16,6 +16,7 @@ Convert reusable agent behavior into a portable source project with:
 - `skill/SKILL.md` as the decision and workflow layer
 - `src/<package>/cli.py` as the deterministic helper layer
 - `scripts/install_cli.sh`, `scripts/sync_skill.sh`, `scripts/check_install.sh`, and `scripts/update_cli.sh`
+- generated `<cli> sync-skill` commands that delegate to `scripts/sync_skill.sh`
 - installed skill-local `bin/<cli>` wrappers so agents can run the CLI from other projects
 - optional docs under `docs/` for SPEC / ARCHITECTURE / ROADMAP / DECISIONS
 
@@ -64,6 +65,18 @@ skillcli uninstall --dry-run
 skillcli doctor --json
 ```
 
+Generated projects should expose the same lifecycle through their own business
+CLI:
+
+```bash
+mytool sync-skill --targets codex,agents --force
+mytool sync-skill --targets codex --dry-run
+```
+
+That generated command should be a thin wrapper around
+`scripts/sync_skill.sh`; do not duplicate target resolution or copy logic in the
+CLI module.
+
 ## Workflow A - CLI-ify A Reusable Behavior
 
 Use when the user has a skill, repeated agent workflow, or fragile helper
@@ -79,9 +92,11 @@ sequence that should become portable.
 5. Replace placeholder CLI commands with the real deterministic commands.
 6. Update `skill/SKILL.md` so agents resolve the CLI by PATH, skill-local
    `bin/<cli>`, then `<PREFIX>_PROJECT_DIR`, and declare `metadata.requires.bins`.
-7. Make status/check commands produce structured JSON for agent consumption.
-8. Run tests and `skillcli audit`.
-9. Sync the skill so installed copies include `bin/<cli>`.
+7. Keep `<cli> sync-skill` available for installed skill refreshes and delegate
+   it to `scripts/sync_skill.sh`.
+8. Make status/check commands produce structured JSON for agent consumption.
+9. Run tests and `skillcli audit`.
+10. Sync the skill so installed copies include `bin/<cli>`.
 
 ## Workflow B - Update A Source Checkout
 
@@ -143,10 +158,10 @@ skillcli audit /path/to/project --json
 ```
 
 Audit checks are structural. They verify the project has a script entrypoint,
-CLI module, skill frontmatter, CLI instructions, install/sync/check scripts, and
-skill-local wrapper generation. They also warn when the skill does not declare
-its required CLI bin and help command. They do not judge whether the domain
-behavior is good.
+CLI module, skill frontmatter, CLI instructions, install/sync/check scripts,
+business CLI `sync-skill` delegation, and skill-local wrapper generation. They
+also warn when the skill does not declare its required CLI bin and help command.
+They do not judge whether the domain behavior is good.
 
 Findings include:
 
@@ -175,6 +190,11 @@ tests/
 docs/
 ```
 
+The project CLI should include `sync-skill --targets --force --dry-run` as a
+thin wrapper over `scripts/sync_skill.sh`. The script remains the single source
+of sync behavior so direct script use, project update lifecycle, and business
+CLI sync cannot drift apart.
+
 Generated or installed skill copies should not become the editable source of
 truth. Edit the source checkout, then update/sync.
 
@@ -188,5 +208,7 @@ truth. Edit the source checkout, then update/sync.
 - Network or package-index installation as the only way to run the local CLI.
 - Pulling or syncing over a dirty source checkout without explicitly checking
   what changed.
+- Duplicating sync target resolution and copy behavior in both `<cli>
+  sync-skill` and `scripts/sync_skill.sh`.
 - Treating every audit warning as mandatory; warnings identify optimization
   candidates, not necessarily broken behavior.

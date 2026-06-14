@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -38,9 +39,22 @@ class SkillCliKitTest(unittest.TestCase):
             self.assertTrue((project / "scripts" / "sync_skill.sh").exists())
             self.assertTrue((project / "scripts" / "update_cli.sh").exists())
             self.assertTrue(os.access(project / "scripts" / "update_cli.sh", os.X_OK))
+            generated_cli = (project / "src" / "example_skill" / "cli.py").read_text(encoding="utf-8")
+            self.assertIn('sub.add_parser("sync-skill"', generated_cli)
+            self.assertIn("scripts/sync_skill.sh", generated_cli)
             skill_text = (project / "skill" / "SKILL.md").read_text(encoding="utf-8")
             self.assertIn('bins: ["exskill"]', skill_text)
             self.assertIn('cliHelp: "exskill --help"', skill_text)
+            help_result = subprocess.run(
+                ["python3", "-m", "example_skill.cli", "--help"],
+                cwd=str(project),
+                env={**os.environ, "PYTHONPATH": str(project / "src")},
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(help_result.returncode, 0, help_result.stderr)
+            self.assertIn("sync-skill", help_result.stdout)
 
             audit_out = io.StringIO()
             with redirect_stdout(audit_out):
@@ -56,6 +70,61 @@ class SkillCliKitTest(unittest.TestCase):
                 status_code = cli.main(["status", str(project), "--json"])
             self.assertEqual(status_code, 0)
             self.assertEqual(json.loads(status_out.getvalue())["finding_counts"]["warn"], 0)
+
+    def test_audit_warns_when_cli_sync_skill_command_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "example-skill"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    cli.main(
+                        [
+                            "init",
+                            str(project),
+                            "--name",
+                            "example-skill",
+                            "--cli",
+                            "exskill",
+                            "--description",
+                            "Example reusable behavior.",
+                        ]
+                    ),
+                    0,
+                )
+
+            cli_path = project / "src" / "example_skill" / "cli.py"
+            cli_path.write_text(
+                """from __future__ import annotations
+
+import argparse
+from typing import Iterable
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="exskill")
+    sub = parser.add_subparsers(dest="command", required=True)
+    status = sub.add_parser("status")
+    status.set_defaults(func=lambda args: 0)
+    doctor = sub.add_parser("doctor")
+    doctor.set_defaults(func=lambda args: 0)
+    return parser
+
+
+def main(argv: Iterable[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(list(argv) if argv is not None else None)
+    return args.func(args)
+""",
+                encoding="utf-8",
+            )
+
+            audit_out = io.StringIO()
+            with redirect_stdout(audit_out):
+                audit_code = cli.main(["audit", str(project), "--json"])
+            self.assertEqual(audit_code, 0)
+            payload = json.loads(audit_out.getvalue())
+            sync_findings = [item for item in payload["findings"] if item["category"] == "sync"]
+            self.assertTrue(any("sync-skill is missing" in item["message"] for item in sync_findings))
+            self.assertTrue(any("--targets, --force, and --dry-run" in item["recommendation"] for item in sync_findings))
 
     def test_update_runs_lifecycle_and_syncs_skill(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

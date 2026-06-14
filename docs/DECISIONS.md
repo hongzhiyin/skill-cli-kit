@@ -362,3 +362,45 @@ native release installation, but the user intent is simply to update
 - `docs/changes/2026-06-14-update-self-release-by-default/`
 - `src/skill_cli_kit/cli.py`
 - `tests/test_cli.py`
+
+---
+
+## D-010 - Generate a domain CLI `sync-skill` wrapper
+
+**Date**: 2026-06-15
+
+**Context**:
+Generated projects already include `scripts/sync_skill.sh`, but agents prefer
+discoverable business CLI commands over remembering project-local script paths.
+At the same time, duplicating target resolution and copy logic in both the CLI
+and script would make generated projects drift-prone.
+
+**Options**:
+- A. Keep only `scripts/sync_skill.sh` - preserves one implementation, but
+  hides an important lifecycle operation outside the generated CLI surface.
+- B. Reimplement sync behavior inside generated `<cli> sync-skill` - gives a
+  direct command, but creates two implementations of target resolution, force
+  handling, and wrapper generation.
+- C. Generate `<cli> sync-skill` as a thin wrapper that forwards
+  `--targets`, `--force`, and `--dry-run` to `scripts/sync_skill.sh`.
+
+**Chosen**: C
+
+**Rationale**:
+- Agents get a stable, discoverable command in the generated business CLI.
+- `scripts/sync_skill.sh` remains the single sync implementation for source
+  checkout update flows and direct script use.
+- Audit can identify older projects that have the script but not the CLI
+  command, without treating the gap as a hard structural error.
+
+**Risks**:
+- Projects with intentionally custom sync behavior may receive an advisory
+  warning. Mitigation: keep the finding at `warn` level with a concrete
+  recommendation rather than blocking audit success.
+
+**Related code / docs**:
+- SPEC §2 M, §3.4, invariant #13
+- ROADMAP Step 4d
+- `docs/changes/2026-06-15-generated-cli-sync-skill-command/`
+- `src/skill_cli_kit/cli.py`
+- `tests/test_cli.py`

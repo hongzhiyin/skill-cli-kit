@@ -24,6 +24,7 @@ contracts.
 | J | Existing project review | Audit reports categorize required gaps and optimization opportunities | See D-006 |
 | K | Source checkout location | `skill-cli-kit` itself should live as a top-level `~/Project/skill-cli-kit` source checkout | See D-007 |
 | L | Native release install | Released `skillcli` installs under `~/.local/share/skillcli` with a `~/.local/bin/skillcli` launcher | See D-008 |
+| M | Generated sync command | Generated domain CLIs expose `<cli> sync-skill` as a thin wrapper around `scripts/sync_skill.sh` | See D-010 |
 
 ## 3. Derived Rules
 
@@ -91,6 +92,12 @@ metadata:
   cliHelp: "<cli> --help"
 ```
 
+Generated domain CLIs should include `status`, `doctor`, and `sync-skill`.
+The generated `<cli> sync-skill` command forwards `--targets`, `--force`, and
+`--dry-run` to `scripts/sync_skill.sh`; the script remains the single place that
+implements copying, target resolution, and installed `bin/<cli>` wrapper
+generation.
+
 ## 4. Default Handling
 
 | Scenario | Default behaviour |
@@ -109,6 +116,7 @@ metadata:
 | Git pull is requested | Use `skillcli update <project> --pull`; refuse dirty worktrees unless `--allow-dirty` is passed |
 | Existing CLI skill project is reviewed | Treat missing package/script/skill as errors, portability/documentation/update gaps as warnings |
 | `skill-cli-kit` source checkout is moved | Reinstall the local wrapper, refresh global/user-facing entrypoints, sync installed skills, then verify `doctor` and `audit` |
+| Generated project needs installed skill copies refreshed | Prefer `<cli> sync-skill --targets codex,agents --force`; `scripts/sync_skill.sh` remains the implementation |
 
 ## 5. Module Contracts
 
@@ -123,7 +131,7 @@ Constraints:
 - Input domain: project paths, skill names, CLI names, package names, sync targets.
 - Output domain: scaffold files, console status, optional JSON audit report.
 - Error categories: invalid names, missing core files, unsafe target replacement.
-- Related invariants: #1, #2, #3, #4, #5.
+- Related invariants: #1, #2, #3, #4, #5, #13.
 
 ### 5.2 Update Lifecycle
 
@@ -189,3 +197,6 @@ Constraints:
     switching the `current` launcher target.
 12. **#12**: `skillcli update` without a project path updates the installed
     `skillcli` release; project update requires an explicit path.
+13. **#13**: Generated domain CLIs expose `<cli> sync-skill` and delegate sync
+    behavior to `scripts/sync_skill.sh` instead of maintaining duplicate sync
+    logic.

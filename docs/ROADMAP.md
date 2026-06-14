@@ -5,7 +5,7 @@
 ## Current Progress
 
 **Phase**: Phase 1 - reusable skill + CLI scaffold
-**Current Step**: Step 4c done; v0.1.1 public release published and verified
+**Current Step**: Step 4d done - generated domain CLI sync-skill command
 
 ### Step Status
 
@@ -19,6 +19,7 @@
 | 4a | Promote `skill-cli-kit` to a canonical `~/Project` source checkout | Done |
 | 4b | Make `skill-cli-kit` its own native-install reference project | Done |
 | 4c | Make `skillcli update` the self-release update command | Done |
+| 4d | Add generated project `<cli> sync-skill` contract | Done |
 | 5 | Use on a third real skill and refine checks | Pending |
 
 ---
@@ -158,6 +159,30 @@ shape it should later teach other skill-backed CLI projects.
 2. `skillcli update <project>` still runs source checkout lifecycle.
 3. `skillcli --help` does not advertise `native-update`.
 4. Tests, `docdev audit`, and `skillcli audit` pass.
+
+## Step 4d - Generated Project Sync Command
+
+**Goal**: Make generated skill-backed CLI projects expose a business CLI
+`sync-skill` command while keeping `scripts/sync_skill.sh` as the single sync
+implementation.
+
+**Tasks**:
+- [x] Add `<cli> sync-skill` to generated CLI templates.
+- [x] Keep generated CLI sync as a thin wrapper around `scripts/sync_skill.sh`.
+- [x] Support `--targets`, `--force`, and `--dry-run` in generated sync flow.
+- [x] Warn in audit when an existing project lacks the CLI sync command.
+- [x] Update SPEC, ARCHITECTURE, DECISIONS, skill guidance, and pattern reference.
+- [x] Run tests, CLI help, temporary generation/audit smoke, and `docdev audit`.
+
+**Acceptance**:
+1. New generated projects include `<cli> sync-skill` and generated tests cover
+   dry-run sync.
+2. `skillcli audit` warns with a recommendation when an existing CLI-backed
+   project has `scripts/sync_skill.sh` but no `<cli> sync-skill`.
+3. Existing `skillcli update --sync-skill/--no-sync-skill` behavior remains
+   unchanged.
+4. Tests, CLI help, temp project smoke, `skillcli audit`, and `docdev audit`
+   pass.
 
 ## Step 5 - Validate on a third real skill
 

@@ -215,6 +215,7 @@ where = ["src"]
 ```bash
 ./scripts/install_cli.sh
 ./.venv/bin/{{cli_name}} doctor
+./.venv/bin/{{cli_name}} sync-skill --targets codex --dry-run
 ./scripts/check_install.sh
 ```
 
@@ -247,6 +248,7 @@ skill; keep repeatable filesystem, parsing, audit, and sync work in the CLI.
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -299,6 +301,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0 if skill.exists() else 1
 
 
+def cmd_sync_skill(args: argparse.Namespace) -> int:
+    root = project_root()
+    script = root / "scripts" / "sync_skill.sh"
+    if not script.exists():
+        print(f"missing sync script: {script}", file=sys.stderr)
+        return 1
+    command = [str(script), "--targets", args.targets]
+    if args.force:
+        command.append("--force")
+    if args.dry_run:
+        command.append("--dry-run")
+    return subprocess.run(command, check=False).returncode
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=TOOL_NAME, description="{{description}}")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -308,6 +324,11 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = sub.add_parser("doctor", help="Check local source checkout state.")
     doctor.add_argument("--json", action="store_true", help="Print structured JSON.")
     doctor.set_defaults(func=cmd_doctor)
+    sync = sub.add_parser("sync-skill", help="Sync installed skill copies via scripts/sync_skill.sh.")
+    sync.add_argument("--targets", default="codex", help="Comma list: codex,cursor,agents,claude,all.")
+    sync.add_argument("--force", action="store_true", help="Replace marked or explicitly approved existing targets.")
+    sync.add_argument("--dry-run", action="store_true", help="Print planned targets without writing.")
+    sync.set_defaults(func=cmd_sync_skill)
     return parser
 
 
@@ -369,6 +390,7 @@ If none of those work, ask the user to run `./scripts/install_cli.sh` and
 ```bash
 {{cli_name}} status
 {{cli_name}} doctor
+{{cli_name}} sync-skill --targets codex,agents --force
 ./scripts/check_install.sh
 ./scripts/sync_skill.sh
 ```
@@ -417,30 +439,145 @@ echo "Try: $BIN doctor"
 set -eu
 
 PROJECT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-CODEX_HOME_DIR=${CODEX_HOME:-"$HOME/.codex"}
-TARGET_DIR="$CODEX_HOME_DIR/skills/{{skill_name}}"
+TARGETS="codex"
+FORCE=0
+DRY_RUN=0
+AGENTS_SYNCED=0
 
-if [ -e "$TARGET_DIR" ] && [ ! -f "$TARGET_DIR/{{marker}}" ]; then
-  if [ "${1:-}" != "--force" ]; then
-    echo "$TARGET_DIR exists; pass --force to replace it" >&2
-    exit 2
-  fi
-fi
+usage() {
+  echo "Usage: sync_skill.sh [--targets codex,cursor,agents,claude,all] [--force] [--dry-run]" >&2
+}
 
-rm -rf "$TARGET_DIR"
-mkdir -p "$TARGET_DIR"
-cp -R "$PROJECT_DIR/skill/." "$TARGET_DIR/"
-printf '%s\\n' "$PROJECT_DIR" > "$TARGET_DIR/{{marker}}"
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --targets)
+      shift
+      TARGETS="${1:?--targets requires a value}"
+      ;;
+    --targets=*)
+      TARGETS="${1#--targets=}"
+      ;;
+    --force)
+      FORCE=1
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+  shift
+done
 
-mkdir -p "$TARGET_DIR/bin"
-cat > "$TARGET_DIR/bin/{{cli_name}}" <<EOF
+target_path() {
+  case "$1" in
+    codex)
+      printf '%s\\n' "${CODEX_HOME:-"$HOME/.codex"}/skills/{{skill_name}}"
+      ;;
+    cursor)
+      printf '%s\\n' "$HOME/.cursor/skills/{{skill_name}}"
+      ;;
+    agents)
+      printf '%s\\n' "$HOME/.agents/skills/{{skill_name}}"
+      ;;
+    claude)
+      printf '%s\\n' "$HOME/.claude/skills/{{skill_name}}"
+      ;;
+    *)
+      echo "Unknown target: $1" >&2
+      exit 2
+      ;;
+  esac
+}
+
+write_cli_wrapper() {
+  target_dir="$1"
+  mkdir -p "$target_dir/bin"
+  cat > "$target_dir/bin/{{cli_name}}" <<EOF
 #!/usr/bin/env sh
 {{source_env}}="$PROJECT_DIR" PYTHONPATH="$PROJECT_DIR/src" exec python3 -m {{package_name}}.cli "\\$@"
 EOF
-chmod +x "$TARGET_DIR/bin/{{cli_name}}"
+  chmod +x "$target_dir/bin/{{cli_name}}"
+}
 
-echo "Synced skill to $TARGET_DIR"
-echo "Installed skill-local wrapper at $TARGET_DIR/bin/{{cli_name}}"
+sync_one() {
+  target="$1"
+  target_dir=$(target_path "$target")
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "$target: would sync to $target_dir"
+    return 0
+  fi
+  if [ -e "$target_dir" ] && [ ! -f "$target_dir/{{marker}}" ]; then
+    if [ "$FORCE" != "1" ]; then
+      echo "$target_dir exists; pass --force to replace it" >&2
+      exit 2
+    fi
+  fi
+  rm -rf "$target_dir"
+  mkdir -p "$target_dir"
+  cp -R "$PROJECT_DIR/skill/." "$target_dir/"
+  printf '%s\\n' "$PROJECT_DIR" > "$target_dir/{{marker}}"
+  write_cli_wrapper "$target_dir"
+  echo "$target: synced -> $target_dir"
+}
+
+link_claude() {
+  claude_dir=$(target_path claude)
+  agents_link="../../.agents/skills/{{skill_name}}"
+  if [ "$DRY_RUN" = "1" ]; then
+    echo "claude: would link $claude_dir -> $agents_link"
+    return 0
+  fi
+  if [ -e "$claude_dir" ] || [ -L "$claude_dir" ]; then
+    if [ -L "$claude_dir" ] && [ "$(readlink "$claude_dir")" = "$agents_link" ]; then
+      echo "claude: already linked -> $claude_dir"
+      return 0
+    fi
+    if [ "$FORCE" != "1" ]; then
+      echo "$claude_dir exists; pass --force to replace it" >&2
+      exit 2
+    fi
+    rm -rf "$claude_dir"
+  fi
+  mkdir -p "$(dirname "$claude_dir")"
+  ln -s "$agents_link" "$claude_dir"
+  echo "claude: linked -> $claude_dir"
+}
+
+expanded_targets=$(printf '%s' "$TARGETS" | tr ',' ' ')
+if [ "$TARGETS" = "all" ]; then
+  expanded_targets="codex cursor agents claude"
+fi
+
+for target in $expanded_targets; do
+  case "$target" in
+    agents)
+      sync_one agents
+      AGENTS_SYNCED=1
+      ;;
+    claude)
+      if [ "$AGENTS_SYNCED" != "1" ]; then
+        sync_one agents
+        AGENTS_SYNCED=1
+      fi
+      link_claude
+      ;;
+    codex|cursor)
+      sync_one "$target"
+      ;;
+    *)
+      echo "Unknown target: $target" >&2
+      exit 2
+      ;;
+  esac
+done
 """,
         True,
     ),
@@ -489,6 +626,10 @@ class CliTest(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(cli.main(["status"]), 0)
 
+    def test_sync_skill_dry_run(self) -> None:
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(cli.main(["sync-skill", "--targets", "codex", "--dry-run"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
@@ -516,6 +657,7 @@ Provide a portable skill plus deterministic CLI for {{skill_name}}.
 |---|---|---|
 | `{{cli_name}} status` | Show source metadata | No |
 | `{{cli_name}} doctor` | Check local source checkout state | No |
+| `{{cli_name}} sync-skill` | Delegate installed skill sync to `scripts/sync_skill.sh` | Writes selected skill target dirs unless `--dry-run` is passed |
 
 ## 4. Invariants
 
@@ -771,6 +913,7 @@ def audit_project(project: Path, args: argparse.Namespace) -> tuple[list[Finding
             "Make the script entry point target an importable module function.",
         )
 
+    cli_path: Path | None = None
     if meta.package_name:
         cli_path = project / "src" / meta.package_name.replace(".", "/") / "cli.py"
         if not cli_path.exists():
@@ -884,6 +1027,26 @@ def audit_project(project: Path, args: argparse.Namespace) -> tuple[list[Finding
                 sync_path,
                 "Generate an installed skill-local bin/<cli> wrapper during sync.",
             )
+        if cli_path and cli_path.exists():
+            cli_text = cli_path.read_text(encoding="utf-8")
+            if "sync-skill" not in cli_text:
+                add_finding(
+                    findings,
+                    "warn",
+                    "sync",
+                    f"CLI command {meta.cli_name} sync-skill is missing",
+                    cli_path,
+                    "Add a sync-skill subcommand that forwards --targets, --force, and --dry-run to scripts/sync_skill.sh.",
+                )
+            elif "scripts/sync_skill.sh" not in cli_text:
+                add_finding(
+                    findings,
+                    "warn",
+                    "sync",
+                    f"CLI command {meta.cli_name} sync-skill does not clearly delegate to scripts/sync_skill.sh",
+                    cli_path,
+                    "Keep scripts/sync_skill.sh as the sync implementation and make the CLI command a thin wrapper.",
+                )
 
     install_path = project / "scripts" / "install_cli.sh"
     if install_path.exists():
