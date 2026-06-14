@@ -54,7 +54,7 @@
 | R2 | `skillcli update <project>` 继续调用 source checkout lifecycle | 既有 update lifecycle 单测 | 完成 |
 | R3 | source-only flags 如 `--force` 在无 project 时必须提示需要 project path | 单测 | 完成 |
 | R4 | release-only flags 如 `--version` 和 project path 混用时必须报错 | 单测 | 完成 |
-| R5 | `skillcli --help` 不再公开推荐 `native-update` | CLI help smoke / 文档 grep | 待验证 |
+| R5 | `skillcli --help` 不再公开推荐 `native-update` | CLI help smoke / 文档 grep | 完成 |
 
 ## 6. 约束与不变式
 
