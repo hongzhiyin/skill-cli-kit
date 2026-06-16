@@ -14,12 +14,35 @@ curl -fsSL https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/
 If `~/.local/bin` is not on `PATH`, run `~/.local/bin/skillcli` directly or add
 that directory yourself.
 
+Windows PowerShell:
+
+```powershell
+irm https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.ps1 | iex
+skillcli -v
+```
+
+The Windows installer writes `$HOME\.local\bin\skillcli.ps1` and
+`$HOME\.local\bin\skillcli.cmd`, adds that bin directory to User PATH by
+default, and tries to refresh the current PowerShell process. If the current
+terminal still cannot find `skillcli`, open a new terminal or run the full
+`$HOME\.local\bin\skillcli.ps1` path. To avoid PATH mutation, download the
+installer and run it with `-NoModifyPath`.
+
 Native installs use:
 
 ```text
 ~/.local/share/skillcli/releases/<version>/
 ~/.local/share/skillcli/current
 ~/.local/bin/skillcli
+```
+
+Windows native installs use:
+
+```text
+%USERPROFILE%\.local\share\skillcli\releases\<version>\
+%USERPROFILE%\.local\share\skillcli\current
+%USERPROFILE%\.local\bin\skillcli.ps1
+%USERPROFILE%\.local\bin\skillcli.cmd
 ```
 
 Source checkout development:
@@ -41,6 +64,9 @@ skillcli update
 
 Use `--no-sync-skill` only when you want to refresh the CLI release without
 writing Codex / Agents skill copies.
+
+On Windows, `skillcli update` uses the PowerShell remote installer and keeps the
+same `--no-sync-skill` behavior.
 
 ## Updating A Tool
 

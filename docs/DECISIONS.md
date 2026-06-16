@@ -404,3 +404,51 @@ and script would make generated projects drift-prone.
 - `docs/changes/2026-06-15-generated-cli-sync-skill-command/`
 - `src/skill_cli_kit/cli.py`
 - `tests/test_cli.py`
+
+---
+
+## D-011 - Use installer-owned Windows command shims for native install
+
+**Date**: 2026-06-16
+
+**Context**:
+`docs-driven-dev` Windows live smoke proved that a GitHub Releases native
+installer can give users a bare `docdev` command by writing both a PowerShell
+launcher and a `.cmd` shim, then adding the native bin directory to User PATH.
+`skill-cli-kit` already has release installers, but its PowerShell installer
+only writes `skillcli.ps1`, and `skillcli update` always calls the Unix shell
+installer.
+
+**Options**:
+- A. Keep Windows users on the full `skillcli.ps1` path - smallest change, but
+  keeps Windows behind the native install experience this project recommends.
+- B. Generate installer-owned `skillcli.ps1` and `skillcli.cmd`, add User PATH
+  by default with `-NoModifyPath`, and dispatch `skillcli update` to
+  PowerShell on Windows.
+- C. Build a dedicated `skillcli.exe` artifact now - strongest bare-command
+  model, but introduces a binary packaging and signing workflow before the
+  shim path is exhausted.
+
+**Chosen**: B
+
+**Rationale**:
+- It matches the path already validated by `docs-driven-dev` without requiring
+  npm, Node.js, or a binary build system.
+- It keeps the GitHub Releases / checksum / native install contract intact.
+- It gives managed Windows environments an explicit opt-out from PATH writes.
+
+**Risks**:
+- Existing terminals may not see User PATH changes until reopened. Mitigation:
+  update the current PowerShell process when possible and print diagnostics.
+- `.cmd` remains a shim over Python, not a standalone executable. Mitigation:
+  treat `skillcli.exe` as a later packaging decision.
+- Windows behavior still needs live smoke after release. Mitigation: cover the
+  script contract statically and keep the live-smoke gap explicit.
+
+**Related code / docs**:
+- SPEC §2 N, §3.3, invariant #14
+- ROADMAP Step 4e
+- `docs/changes/2026-06-16-windows-structure-parity-review/`
+- `scripts/install_remote.ps1`
+- `src/skill_cli_kit/cli.py`
+- `tests/test_cli.py`

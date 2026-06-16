@@ -1511,21 +1511,36 @@ def resolve_native_bin_dir(raw: str | None = None) -> Path:
 
 def cmd_release_update(args: argparse.Namespace) -> int:
     source_root = find_source_root()
-    installer = source_root / "scripts" / "install_remote.sh"
+    if os.name == "nt":
+        installer = source_root / "scripts" / "install_remote.ps1"
+    else:
+        installer = source_root / "scripts" / "install_remote.sh"
     if not installer.exists():
         raise SystemExit(f"Native installer script missing: {installer}")
 
-    command = [str(installer)]
-    if args.version:
-        command.extend(["--version", args.version])
-    if args.release_base_url:
-        command.extend(["--release-base-url", args.release_base_url])
-    if args.install_root:
-        command.extend(["--install-root", args.install_root])
-    if args.bin_dir:
-        command.extend(["--bin-dir", args.bin_dir])
     sync_skill = True if args.sync_skill is None else bool(args.sync_skill)
-    command.append("--sync-skill" if sync_skill else "--no-sync-skill")
+    if os.name == "nt":
+        command = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(installer)]
+        if args.version:
+            command.extend(["-Version", args.version])
+        if args.release_base_url:
+            command.extend(["-ReleaseBaseUrl", args.release_base_url])
+        if args.install_root:
+            command.extend(["-InstallRoot", args.install_root])
+        if args.bin_dir:
+            command.extend(["-BinDir", args.bin_dir])
+        command.append("-SyncSkill" if sync_skill else "-NoSyncSkill")
+    else:
+        command = [str(installer)]
+        if args.version:
+            command.extend(["--version", args.version])
+        if args.release_base_url:
+            command.extend(["--release-base-url", args.release_base_url])
+        if args.install_root:
+            command.extend(["--install-root", args.install_root])
+        if args.bin_dir:
+            command.extend(["--bin-dir", args.bin_dir])
+        command.append("--sync-skill" if sync_skill else "--no-sync-skill")
 
     env = os.environ.copy()
     env.setdefault("SKILLCLI_INSTALL_LOG_PREFIX", "[skillcli update]")

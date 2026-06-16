@@ -4,7 +4,8 @@ param(
     [string]$InstallRoot = $(if ($env:SKILLCLI_INSTALL_ROOT) { $env:SKILLCLI_INSTALL_ROOT } else { Join-Path $HOME ".local\share\skillcli" }),
     [string]$BinDir = $(if ($env:SKILLCLI_BIN_DIR) { $env:SKILLCLI_BIN_DIR } else { Join-Path $HOME ".local\bin" }),
     [switch]$SyncSkill,
-    [switch]$NoSyncSkill
+    [switch]$NoSyncSkill,
+    [switch]$NoModifyPath
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +41,73 @@ function Receive-SkillCliAsset {
         Invoke-WebRequest -Uri $Url -OutFile $Destination -Headers $Headers
     } else {
         Copy-Item -LiteralPath $Url -Destination $Destination -Force
+    }
+}
+
+function Normalize-SkillCliPathEntry {
+    param([string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ""
+    }
+    $Expanded = [Environment]::ExpandEnvironmentVariables($Value.Trim().Trim('"'))
+    if ([string]::IsNullOrWhiteSpace($Expanded)) {
+        return ""
+    }
+    try {
+        return ([System.IO.Path]::GetFullPath($Expanded)).TrimEnd([char[]]("\\/"))
+    } catch {
+        return $Expanded.TrimEnd([char[]]("\\/"))
+    }
+}
+
+function Test-SkillCliPathContains {
+    param([string]$PathValue, [string]$Entry)
+    if ([string]::IsNullOrWhiteSpace($PathValue)) {
+        return $false
+    }
+    $Needle = Normalize-SkillCliPathEntry $Entry
+    if (-not $Needle) {
+        return $false
+    }
+    foreach ($Item in ($PathValue -split [System.IO.Path]::PathSeparator)) {
+        if ((Normalize-SkillCliPathEntry $Item).Equals($Needle, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Add-SkillCliPathEntry {
+    param([string]$PathValue, [string]$Entry)
+    if ([string]::IsNullOrWhiteSpace($PathValue)) {
+        return $Entry
+    }
+    return $PathValue.TrimEnd([System.IO.Path]::PathSeparator) + [System.IO.Path]::PathSeparator + $Entry
+}
+
+function Enable-SkillCliCommandOnPath {
+    param([string]$Directory)
+    $ResolvedDir = [System.IO.Path]::GetFullPath($Directory)
+    $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    if (-not (Test-SkillCliPathContains -PathValue $UserPath -Entry $ResolvedDir)) {
+        [Environment]::SetEnvironmentVariable("Path", (Add-SkillCliPathEntry -PathValue $UserPath -Entry $ResolvedDir), "User")
+        $UpdatedUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if (Test-SkillCliPathContains -PathValue $UpdatedUserPath -Entry $ResolvedDir) {
+            Write-SkillCliInstallLog "added to user PATH: $ResolvedDir"
+        } else {
+            Write-SkillCliInstallLog "warning: attempted to add to user PATH but could not verify persistence: $ResolvedDir"
+        }
+    } else {
+        Write-SkillCliInstallLog "user PATH already contains: $ResolvedDir"
+    }
+
+    if (-not (Test-SkillCliPathContains -PathValue $env:Path -Entry $ResolvedDir)) {
+        $env:Path = Add-SkillCliPathEntry -PathValue $env:Path -Entry $ResolvedDir
+        if (Test-SkillCliPathContains -PathValue $env:Path -Entry $ResolvedDir) {
+            Write-SkillCliInstallLog "added to current process PATH: $ResolvedDir"
+        } else {
+            Write-SkillCliInstallLog "warning: attempted to add to current process PATH but could not verify it: $ResolvedDir"
+        }
     }
 }
 
@@ -85,18 +153,35 @@ try {
     New-Item -ItemType Junction -Path $Current -Target $TargetDir | Out-Null
 
     $Launcher = Join-Path $BinDir "skillcli.ps1"
+    $CmdLauncher = Join-Path $BinDir "skillcli.cmd"
+    $EscapedCurrent = $Current.Replace("'", "''")
+    $EscapedSrc = (Join-Path $Current "src").Replace("'", "''")
     @"
-`$env:SKILLCLI_PROJECT_DIR = '$Current'
-`$env:PYTHONPATH = '$Current\src'
+`$env:SKILLCLI_PROJECT_DIR = '$EscapedCurrent'
+`$env:PYTHONPATH = '$EscapedSrc'
 python -m skill_cli_kit.cli @args
 exit `$LASTEXITCODE
 "@ | Set-Content -Encoding UTF8 -Path $Launcher
+    $CmdCurrent = $Current.Replace("%", "%%")
+    $CmdSrc = (Join-Path $Current "src").Replace("%", "%%")
+    @"
+@echo off
+set "SKILLCLI_PROJECT_DIR=$CmdCurrent"
+set "PYTHONPATH=$CmdSrc"
+python -m skill_cli_kit.cli %*
+"@ | Set-Content -Encoding ASCII -Path $CmdLauncher
 
     Write-SkillCliInstallLog "installed version $($Manifest.version) at $TargetDir"
     Write-SkillCliInstallLog "launcher: $Launcher"
+    Write-SkillCliInstallLog "command: $CmdLauncher"
+    if (-not $NoModifyPath) {
+        Enable-SkillCliCommandOnPath -Directory $BinDir
+    } else {
+        Write-SkillCliInstallLog "skipped PATH update because -NoModifyPath was set"
+    }
     & $Launcher doctor
     if (-not $NoSyncSkill) {
-        & $Launcher sync-skill --targets codex,agents --force
+        & $Launcher sync-skill --targets "codex,agents" --force
     }
 } finally {
     if (Test-Path $TempDir) {

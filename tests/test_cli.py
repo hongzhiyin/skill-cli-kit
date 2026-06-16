@@ -9,8 +9,10 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
 
 from skill_cli_kit import cli
 
@@ -184,6 +186,130 @@ def main(argv: Iterable[str] | None = None) -> int:
         self.assertEqual(getattr(calls[0], "project"), None)
         self.assertEqual(getattr(calls[0], "version"), "0.1.1")
         self.assertEqual(getattr(calls[0], "sync_skill"), False)
+
+    def test_release_update_uses_unix_native_installer_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            installer = scripts / "install_remote.sh"
+            installer.write_text("#!/bin/sh\n", encoding="utf-8")
+            calls: list[tuple[list[str], bool, dict[str, str]]] = []
+
+            def fake_run(command: list[str], check: bool, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+                calls.append((command, check, env))
+                return subprocess.CompletedProcess(args=command, returncode=7)
+
+            with (
+                mock.patch.object(cli, "find_source_root", return_value=root),
+                mock.patch.object(cli.subprocess, "run", side_effect=fake_run),
+            ):
+                code = cli.main(
+                    [
+                        "update",
+                        "--version",
+                        "0.1.2",
+                        "--release-base-url",
+                        "file:///tmp/assets",
+                        "--install-root",
+                        "/tmp/root",
+                        "--bin-dir",
+                        "/tmp/bin",
+                    ]
+                )
+
+            self.assertEqual(code, 7)
+            self.assertEqual(len(calls), 1)
+            command, check, env = calls[0]
+            self.assertFalse(check)
+            self.assertEqual(command[0], str(installer))
+            self.assertIn("--version", command)
+            self.assertIn("0.1.2", command)
+            self.assertIn("--release-base-url", command)
+            self.assertIn("file:///tmp/assets", command)
+            self.assertIn("--install-root", command)
+            self.assertIn("/tmp/root", command)
+            self.assertIn("--bin-dir", command)
+            self.assertIn("/tmp/bin", command)
+            self.assertIn("--sync-skill", command)
+            self.assertEqual(env["SKILLCLI_INSTALL_LOG_PREFIX"], "[skillcli update]")
+
+    def test_release_update_dispatches_to_windows_native_installer(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scripts = root / "scripts"
+            scripts.mkdir()
+            installer = scripts / "install_remote.ps1"
+            installer.write_text("param()\n", encoding="utf-8")
+            calls: list[tuple[list[str], bool, dict[str, str]]] = []
+
+            def fake_run(command: list[str], check: bool, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+                calls.append((command, check, env))
+                return subprocess.CompletedProcess(args=command, returncode=9)
+
+            with (
+                mock.patch.object(cli, "find_source_root", return_value=root),
+                mock.patch.object(cli.os, "name", "nt"),
+                mock.patch.object(cli.subprocess, "run", side_effect=fake_run),
+            ):
+                code = cli.main(
+                    [
+                        "update",
+                        "--version",
+                        "0.1.2",
+                        "--release-base-url",
+                        "file:///tmp/assets",
+                        "--install-root",
+                        "C:\\skillcli",
+                        "--bin-dir",
+                        "C:\\bin",
+                        "--no-sync-skill",
+                    ]
+                )
+
+            self.assertEqual(code, 9)
+            self.assertEqual(len(calls), 1)
+            command, check, env = calls[0]
+            self.assertFalse(check)
+            self.assertEqual(command[:5], ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+            self.assertEqual(command[5], str(installer))
+            self.assertIn("-Version", command)
+            self.assertIn("0.1.2", command)
+            self.assertIn("-ReleaseBaseUrl", command)
+            self.assertIn("file:///tmp/assets", command)
+            self.assertIn("-InstallRoot", command)
+            self.assertIn("C:\\skillcli", command)
+            self.assertIn("-BinDir", command)
+            self.assertIn("C:\\bin", command)
+            self.assertIn("-NoSyncSkill", command)
+            self.assertNotIn("-SyncSkill", command)
+            self.assertEqual(env["SKILLCLI_INSTALL_LOG_PREFIX"], "[skillcli update]")
+
+    def test_remote_powershell_installer_exposes_windows_bare_command(self) -> None:
+        install_ps = (ROOT / "scripts" / "install_remote.ps1").read_text(encoding="utf-8")
+        self.assertIn("[switch]$NoModifyPath", install_ps)
+        self.assertIn('Join-Path $BinDir "skillcli.cmd"', install_ps)
+        self.assertIn("Set-Content -Encoding ASCII -Path $CmdLauncher", install_ps)
+        self.assertIn('[Environment]::SetEnvironmentVariable("Path"', install_ps)
+        self.assertIn("attempted to add to user PATH but could not verify persistence", install_ps)
+        self.assertIn("attempted to add to current process PATH but could not verify it", install_ps)
+        self.assertIn("Enable-SkillCliCommandOnPath -Directory $BinDir", install_ps)
+        self.assertIn("skipped PATH update because -NoModifyPath was set", install_ps)
+        self.assertIn('--targets "codex,agents"', install_ps)
+        self.assertNotIn("--targets codex,agents", install_ps)
+
+    def test_docs_describe_windows_native_install_contract(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        skill = (ROOT / "skill" / "SKILL.md").read_text(encoding="utf-8")
+        spec = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
+        self.assertIn("install_remote.ps1", readme)
+        self.assertIn("skillcli.cmd", readme)
+        self.assertIn("-NoModifyPath", readme)
+        self.assertIn("install_remote.ps1", skill)
+        self.assertIn("skillcli.cmd", skill)
+        self.assertIn("-NoModifyPath", skill)
+        self.assertIn("Windows native command", spec)
+        self.assertIn("invariant #14", (ROOT / "docs" / "DECISIONS.md").read_text(encoding="utf-8"))
 
     def test_source_update_flags_require_project(self) -> None:
         with self.assertRaises(SystemExit) as caught:

@@ -5,7 +5,7 @@
 ## Current Progress
 
 **Phase**: Phase 1 - reusable skill + CLI scaffold
-**Current Step**: Step 4d done - generated domain CLI sync-skill command
+**Current Step**: Step 4e done - Windows native installer parity released as v0.1.3
 
 ### Step Status
 
@@ -20,6 +20,7 @@
 | 4b | Make `skill-cli-kit` its own native-install reference project | Done |
 | 4c | Make `skillcli update` the self-release update command | Done |
 | 4d | Add generated project `<cli> sync-skill` contract | Done |
+| 4e | Add Windows native installer bare-command parity | Done |
 | 5 | Use on a third real skill and refine checks | Pending |
 
 ---
@@ -183,6 +184,32 @@ implementation.
    unchanged.
 4. Tests, CLI help, temp project smoke, `skillcli audit`, and `docdev audit`
    pass.
+
+## Step 4e - Windows Native Installer Parity
+
+**Goal**: Bring `skillcli`'s Windows native install and self-update path up to
+the level proven by `docs-driven-dev` Windows live smoke.
+
+**Tasks**:
+- [x] Add scoped change packet for Windows structure parity.
+- [x] Update SPEC, ARCHITECTURE, DECISIONS, README, and skill guidance for
+  Windows `skillcli.cmd`, PATH handling, and `-NoModifyPath`.
+- [x] Make `scripts/install_remote.ps1` generate `skillcli.ps1` and
+  `skillcli.cmd`, update User PATH by default, and quote sync targets.
+- [x] Make `skillcli update` dispatch to the PowerShell installer on Windows
+  and keep the shell installer on Unix-like systems.
+- [x] Add regression tests for the Windows installer static contract and
+  platform-specific update dispatch.
+- [x] Run unit tests, package smoke, `skillcli audit`, and `docdev audit`.
+- [x] Release v0.1.3 with Windows native installer parity assets.
+
+**Acceptance**:
+1. Windows release install writes `skillcli.cmd` and supports `-NoModifyPath`.
+2. `skillcli update` uses the PowerShell installer on Windows and the shell
+   installer on Unix-like systems.
+3. Unix release install and source checkout update behavior remain unchanged.
+4. Tests, local package smoke, `skillcli audit`, and `docdev audit` pass.
+5. GitHub Release v0.1.3 contains the updated Unix and PowerShell installers.
 
 ## Step 5 - Validate on a third real skill
 

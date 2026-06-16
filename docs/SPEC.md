@@ -25,6 +25,7 @@ contracts.
 | K | Source checkout location | `skill-cli-kit` itself should live as a top-level `~/Project/skill-cli-kit` source checkout | See D-007 |
 | L | Native release install | Released `skillcli` installs under `~/.local/share/skillcli` with a `~/.local/bin/skillcli` launcher | See D-008 |
 | M | Generated sync command | Generated domain CLIs expose `<cli> sync-skill` as a thin wrapper around `scripts/sync_skill.sh` | See D-010 |
+| N | Windows native command | Windows release install writes installer-owned `skillcli.ps1` and `skillcli.cmd`, adds the native bin dir to User PATH by default, and uses PowerShell for `skillcli update` | See D-011 |
 
 ## 3. Derived Rules
 
@@ -65,6 +66,14 @@ The Unix native installer downloads `manifest.json`, verifies the artifact
 checksum, installs into `~/.local/share/skillcli/releases/<version>/`, updates
 `~/.local/share/skillcli/current`, writes `~/.local/bin/skillcli`, runs
 `skillcli doctor`, and syncs the skill unless explicitly skipped.
+
+The Windows native installer performs the same manifest, checksum, release,
+`current`, doctor, and default sync steps. It writes both
+`%USERPROFILE%\.local\bin\skillcli.ps1` and
+`%USERPROFILE%\.local\bin\skillcli.cmd`, adds the native bin dir to the current
+user PATH by default, and supports `-NoModifyPath` for restricted environments.
+If a current terminal cannot see the updated User PATH, users can reopen the
+terminal or run the full `skillcli.ps1` path.
 
 ### 3.4 Generated Scaffold Contract
 
@@ -113,6 +122,8 @@ generation.
 | `skillcli` itself should be updated | Run `skillcli update`; use `--no-sync-skill` only when agent homes should not be refreshed |
 | User needs `skillcli` on a machine without the source checkout | Use the native installer from GitHub Releases |
 | Native launcher exists but is not on `PATH` | Use `~/.local/bin/skillcli` directly |
+| Windows native launcher exists but `skillcli` is not on `PATH` | Reopen the terminal or run `$HOME\.local\bin\skillcli.ps1` directly |
+| Windows environment should not be modified | Run the PowerShell installer with `-NoModifyPath` |
 | Git pull is requested | Use `skillcli update <project> --pull`; refuse dirty worktrees unless `--allow-dirty` is passed |
 | Existing CLI skill project is reviewed | Treat missing package/script/skill as errors, portability/documentation/update gaps as warnings |
 | `skill-cli-kit` source checkout is moved | Reinstall the local wrapper, refresh global/user-facing entrypoints, sync installed skills, then verify `doctor` and `audit` |
@@ -149,7 +160,8 @@ unless the caller explicitly skips that stage.
 
 `skillcli update` with no project path is reserved for the installed release
 self-update. To update the current working directory as a source project,
-callers must pass `skillcli update .`.
+callers must pass `skillcli update .`. Self-update uses the Unix remote
+installer on Unix-like systems and the PowerShell remote installer on Windows.
 
 ### 5.3 Review Finding
 
@@ -178,6 +190,8 @@ Constraints:
 - No hidden mutation outside the requested project or explicit sync targets.
 - No long-term reliance on a scratch or umbrella project directory as the
   canonical source checkout for `skill-cli-kit`.
+- No npm-first distribution requirement or Windows `.exe` binary packaging in
+  the current native installer contract.
 
 ## 7. Invariants
 
@@ -200,3 +214,6 @@ Constraints:
 13. **#13**: Generated domain CLIs expose `<cli> sync-skill` and delegate sync
     behavior to `scripts/sync_skill.sh` instead of maintaining duplicate sync
     logic.
+14. **#14**: Windows native release installs expose a bare `skillcli` command
+    through installer-owned launchers and must provide a no-PATH-modification
+    option.

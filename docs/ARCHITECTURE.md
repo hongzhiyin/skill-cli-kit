@@ -94,7 +94,8 @@ skillcli sync-skill
 
 ```text
 skillcli update
-  -> delegate to scripts/install_remote.sh from the current release/source root
+  -> delegate to scripts/install_remote.sh on Unix-like systems
+     or scripts/install_remote.ps1 through PowerShell on Windows
   -> download and install release assets
   -> optionally sync skill targets
 
@@ -123,6 +124,15 @@ scripts/install_remote.sh
   -> install release under ~/.local/share/skillcli/releases/<version>
   -> update ~/.local/share/skillcli/current
   -> write ~/.local/bin/skillcli launcher
+  -> run skillcli doctor and optionally sync skill targets
+
+scripts/install_remote.ps1
+  -> download manifest and artifact from GitHub Release or file:// base
+  -> verify SHA256
+  -> install release under %USERPROFILE%\.local\share\skillcli\releases\<version>
+  -> update %USERPROFILE%\.local\share\skillcli\current
+  -> write %USERPROFILE%\.local\bin\skillcli.ps1 and skillcli.cmd
+  -> add the native bin dir to User PATH unless -NoModifyPath is set
   -> run skillcli doctor and optionally sync skill targets
 ```
 
@@ -164,11 +174,12 @@ class ProjectMeta:
 | `SKILLCLI_INSTALL_ROOT` | `~/.local/share/skillcli` | Native release install root | no |
 | `SKILLCLI_BIN_DIR` | `~/.local/bin` | Native launcher directory | no |
 | `SKILLCLI_RELEASE_BASE_URL` | GitHub latest release URL | Override release asset base for testing/private installs | no |
+| `-NoModifyPath` | PowerShell installer flag | Skip Windows User PATH mutation | no |
 
 ## 6. Process Model
 
-- Entry: native `skillcli` launcher, source `.venv/bin/skillcli`, or installed
-  skill-local `bin/skillcli`.
+- Entry: native `skillcli` launcher, Windows `skillcli.cmd` / `skillcli.ps1`,
+  source `.venv/bin/skillcli`, or installed skill-local `bin/skillcli`.
 - Shutdown: commands exit after a single operation.
 - Background work: none.
 - Network: none.
@@ -195,5 +206,7 @@ Current implementation borrows from:
 - `skillcli update` without a project updates the installed release; callers
   must pass `skillcli update .` or `skillcli update <project>` for source
   checkout maintenance.
+- Windows native PATH changes may require a new terminal, even when the
+  installer refreshes the current PowerShell process.
 - Review recommendations are heuristic; they indicate likely optimization work
   rather than a guarantee that the project is wrong.

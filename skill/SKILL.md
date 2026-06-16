@@ -30,8 +30,11 @@ Resolve helper commands in this order:
 1. Run `skillcli <command>` if it is on `PATH`.
 2. On Unix-like systems, if the native release launcher exists but `skillcli` is
    not on `PATH`, run `~/.local/bin/skillcli <command>`.
-3. If this installed skill path is visible, run `bin/skillcli <command>`.
-4. If `SKILLCLI_PROJECT_DIR` points to the source checkout, run:
+3. On Windows, if the native release launcher exists but `skillcli` is not yet
+   visible in the current terminal, open a new terminal or run
+   `$HOME\.local\bin\skillcli.ps1 <command>`.
+4. If this installed skill path is visible, run `bin/skillcli <command>`.
+5. If `SKILLCLI_PROJECT_DIR` points to the source checkout, run:
 
 ```bash
 SKILLCLI_PROJECT_DIR="$SKILLCLI_PROJECT_DIR" PYTHONPATH="$SKILLCLI_PROJECT_DIR/src" \
@@ -51,6 +54,17 @@ For native release installs:
 ```bash
 curl -fsSL https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.sh | sh
 ```
+
+Windows PowerShell:
+
+```powershell
+irm https://github.com/hongzhiyin/skill-cli-kit/releases/latest/download/install_remote.ps1 | iex
+skillcli -v
+```
+
+The Windows installer writes `skillcli.ps1` and `skillcli.cmd` under
+`$HOME\.local\bin`, adds that directory to User PATH by default, and supports
+`-NoModifyPath` for restricted environments.
 
 ## Commands
 
@@ -145,6 +159,9 @@ To skip refreshing installed skill copies:
 ```bash
 skillcli update --no-sync-skill
 ```
+
+On Windows, `skillcli update` dispatches to `install_remote.ps1`; on Unix-like
+systems it dispatches to `install_remote.sh`.
 
 ## Workflow C - Audit Existing Skill + CLI Projects
 
